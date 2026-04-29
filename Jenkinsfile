@@ -60,3 +60,5 @@ pipeline {
         }
     }
 }
+
+// build stage
