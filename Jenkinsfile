@@ -5,6 +5,10 @@ pipeline {
         githubPush()
     }
 
+    options {
+        disableConcurrentBuilds()
+    }
+
     environment {
         APP_NAME = "todo-app"
         PORT = "3005"
@@ -15,7 +19,14 @@ pipeline {
 
         stage('Clone Repo') {
             steps {
-                git branch: 'main', url: 'https://github.com/sanchitpandit/getting-started-app.git'
+                deleteDir()
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/sanchitpandit/getting-started-app.git'
+                    ]]
+                ])
             }
         }
 
@@ -48,14 +59,23 @@ pipeline {
                 sh '''
                 docker stop $APP_NAME || true
                 docker rm $APP_NAME || true
-                docker run -d -p $PORT:3000 --name $APP_NAME $APP_NAME:$IMAGE_TAG
+                docker run -d --restart=always -p $PORT:3000 --name $APP_NAME $APP_NAME:$IMAGE_TAG
                 '''
             }
         }
 
         stage('Verify') {
             steps {
-                sh 'docker ps | grep $APP_NAME'
+                sh '''
+                sleep 5
+                curl -f http://localhost:$PORT || exit 1
+                '''
+            }
+        }
+
+        stage('Cleanup') {
+            steps {
+                sh 'docker image prune -f'
             }
         }
     }
